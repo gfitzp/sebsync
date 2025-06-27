@@ -157,7 +157,7 @@ def get_local_ebooks(index: dict) -> None:
                 continue
             try:
                 hexdigest = calculate_hash(path)
-                if hexdigest in index:
+                if hexdigest in index and not file_in_trash(path):
                     local_ebook = LocalEbook(
                         id=index[hexdigest].get("id", None),
                         title=index[hexdigest].get("title", None),
@@ -307,6 +307,17 @@ def remove(local_ebook: LocalEbook) -> None:
     echo_status(local_ebook.path, Status.REMOVE)
     if not options.dry_run:
         local_ebook.path.unlink()
+
+
+def file_in_trash(path: Path) -> bool:
+    """Indicate whether a file is located in an application's trash directory."""
+    trash_directories = [
+        ".caltrash",  # Calibre
+    ]
+    if [t for t in trash_directories if t in str(path).split(os.sep)]:
+        return True
+    else:
+        return False
 
 
 @dataclass
@@ -501,12 +512,14 @@ def sebsync(**kwargs):
         for path in options.books.glob("**/*.azw3"):
             if not path.is_file():
                 continue
-            local_files.add(calculate_hash(path))
+            if not file_in_trash(path):
+                local_files.add(calculate_hash(path))
         if options.downloads != options.books:
             for path in options.downloads.glob("**/*.azw3"):
                 if not path.is_file():
                     continue
-                local_files.add(calculate_hash(path))
+                if not file_in_trash(path):
+                    local_files.add(calculate_hash(path))
 
         # Ensure the index reflects the current library by pruning entries that don't exist locally
         index_orphans = set(index) - local_files
