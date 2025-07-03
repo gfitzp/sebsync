@@ -325,6 +325,7 @@ class Options:
     """Command line options."""
 
     books: Path
+    calibre: bool
     debug: bool
     downloads: Path
     dry_run: bool
@@ -415,6 +416,12 @@ context_settings = {
     default=True,
 )
 @click.option(
+    "--calibre",
+    help="Specify whether downloads are new, updated, or outdated files for manually importing or deleting within Calibre.",
+    default=False,
+    is_flag=True,
+)
+@click.option(
     "--verbose",
     help="Increase verbosity.",
     is_flag=True,
@@ -427,6 +434,14 @@ def sebsync(**kwargs):
     # --force-update implies --update
     if options.force_update:
         options.update = True
+
+    # --calibre behaves like --update --no-remove but downloads everything to the --downloads directory
+    if options.calibre:
+        options.update = True
+        options.remove = False
+        if options.books == options.downloads:
+            options.books = if_exists(Path.home() / "Books")
+            options.downloads = if_exists(Path.home() / "Downloads")
 
     # --quiet wins over --verbose
     options.verbose = options.verbose and not options.quiet
@@ -455,9 +470,14 @@ def sebsync(**kwargs):
                     download_new = False
                     if options.force_update or books_are_different(local_ebook, remote_ebook):
                         old_hexdigest = calculate_hash(local_ebook.path)
-                        download_ebook(remote_ebook.href, local_ebook.path, Status.UPDATE)
-                        if options.type == "kindle" and not options.dry_run:
+                        if options.calibre:
+                            path = options.downloads / ebook_filename(remote_ebook)
+                            download_ebook(remote_ebook.href, path, Status.UPDATE)
+                            new_hexdigest = calculate_hash(path)
+                        else:
+                            download_ebook(remote_ebook.href, local_ebook.path, Status.UPDATE)
                             new_hexdigest = calculate_hash(local_ebook.path)
+                        if options.type == "kindle" and not options.dry_run:
                             index[new_hexdigest] = {
                                 "id": remote_ebook.id,
                                 "title": remote_ebook.title,
