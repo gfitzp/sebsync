@@ -225,11 +225,12 @@ def download_ebook(url: str, path: Path, status: str) -> None:
     with download.open("wb") as file:
         for chunk in response.iter_content(chunk_size=1 * 1024 * 1024):
             file.write(chunk)
-    try:
-        if not get_local_ebook_metadata(download):
-            raise RuntimeError
-    except:
-        raise click.ClickException("Ebook download failed (corrupt file)")
+    if not options.type == "kindle":
+        try:
+            if not get_local_ebook_metadata(download):
+                raise RuntimeError
+        except:
+            raise click.ClickException("Ebook download failed (corrupt file)")
     download.replace(path)
 
 
