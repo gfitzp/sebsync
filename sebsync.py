@@ -204,11 +204,14 @@ def get_local_ebooks(index: dict) -> None:
             except Exception:
                 echo_status(path, Status.UNKNOWN)
     else:
-        try:
-            if local_ebook := get_local_ebook_metadata(path):
-                local_ebooks.append(local_ebook)
-        except:
-            echo_status(path, Status.UNKNOWN)
+        for path in options.books.glob("**/*.epub"):
+            if not path.is_file():
+                continue
+            try:
+                if local_ebook := get_local_ebook_metadata(path):
+                    local_ebooks.append(local_ebook)
+            except:
+                echo_status(path, Status.UNKNOWN)
     if options.verbose:
         click.echo(f"Found {len(local_ebooks)} local ebooks.")
 
